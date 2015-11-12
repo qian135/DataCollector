@@ -3,8 +3,10 @@ package com.example.zhan.datacollector;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Handler;
@@ -30,6 +32,9 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import cn.bmob.v3.Bmob;
+import cn.bmob.v3.listener.SaveListener;
+
 
 public class MainActivity extends Activity {
 
@@ -40,7 +45,17 @@ public class MainActivity extends Activity {
     ProgressBar mAttentionProgressBar, mMeditationProgressBar;
 
 
+    //用来保证用户第一次使用软件时跳出注册界面
+    SharedPreferences mSharedPreferences;
+
+
+    //用来帮助在一个按钮上实现连接与断开的功能
     boolean buttonFlag = true;
+    //用来帮助在按下设置时间的按钮后不会把装置本身消耗的时间记录在内
+    boolean setRecordTime = false;
+
+    //设置要记录几秒钟
+    int sumSecond;
 
     BluetoothAdapter bluetoothAdapter;
 
@@ -70,7 +85,20 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
+        Bmob.initialize(this, "270a4f033730a16b69c8e1b676c1c9c3");
         setContentView(R.layout.activity_main);
+
+        //第一次使用程序时，countFlag为0，启动注册界面，countFlag++以后不启动
+        mSharedPreferences = getSharedPreferences("RegisterFlagSharedPreferences", Context.MODE_PRIVATE);
+        Boolean registerFlag = mSharedPreferences.getBoolean("RegisterFlag", true);
+        if (registerFlag) {
+            SharedPreferences.Editor editor = mSharedPreferences.edit();
+            editor.putBoolean("RegisterFlag", false);
+            editor.commit();
+            Intent intent = new Intent(MainActivity.this,Register.class);
+            startActivity(intent);
+        }
+
 
         tv = (TextView) findViewById(R.id.textView1);
         sv = (ScrollView) findViewById(R.id.scrollView1);
@@ -167,9 +195,9 @@ public class MainActivity extends Activity {
                 List<Map<String, Integer>> dataList = new ArrayList<>();
                 while (cursor.moveToNext()) {
                     Map<String, Integer> map = new HashMap<>();
-                    map.put("raw_data", cursor.getInt(1));
-                    map.put("attention", cursor.getInt(2));
-                    map.put("meditation", cursor.getInt(3));
+//                    map.put("raw_data", cursor.getInt(1));
+                    map.put("attention", cursor.getInt(1));
+                    map.put("meditation", cursor.getInt(2));
                     dataList.add(map);
                 }
 
@@ -192,17 +220,17 @@ public class MainActivity extends Activity {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
 
-                                tgDevice.connect(true);
-
                                 EditText setM = (EditText) view.findViewById(R.id.setMinute);
                                 EditText setS = (EditText) view.findViewById(R.id.setSecond);
 
-                                int sumSecond = 0;
+                                sumSecond = 0;
 
+                                //检测是否输入分数据
                                 if (!(setM.getText().toString().trim().equals(""))) {
                                     sumSecond += Integer.parseInt(setM.getText().toString().trim()) * 60;
                                 }
 
+                                //检测是否输入秒数据
                                 if (!(setS.getText().toString().trim().equals(""))) {
                                     sumSecond += Integer.parseInt(setS.getText().toString());
                                 }
@@ -211,12 +239,8 @@ public class MainActivity extends Activity {
 
                                     tgDevice.connect(true);//时间设置成功，打开连接
 
-                                    new Timer().schedule(new TimerTask() {
-                                        @Override
-                                        public void run() {
-                                            tgDevice.close();//到达指定时间关闭连接
-                                        }
-                                    }, sumSecond * 1000);
+                                    setRecordTime = true;
+
                                 } else {
                                     Toast.makeText(MainActivity.this, "请输入！",
                                             Toast.LENGTH_LONG).show();
@@ -234,7 +258,7 @@ public class MainActivity extends Activity {
         mMeditationProgressBar = (ProgressBar) findViewById(R.id.meditationProgressBar);
 
 
-        //每隔一秒向数据库写入数据
+        //每隔一秒向数据库写入注意力，冥想度数据
         new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
@@ -242,6 +266,15 @@ public class MainActivity extends Activity {
                 handler.sendEmptyMessage(135);
             }
         }, 0, 1000);
+
+        //传入RawData数据
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                // 发送将数据插入数据库的消息
+                handler.sendEmptyMessage(1);//时时写入RawData
+            }
+        }, 0, 100);
 
 
     }
@@ -255,24 +288,74 @@ public class MainActivity extends Activity {
 
             switch (msg.what) {
 
+                case 1:
+                    if (mRawData != null) {
+
+                        RawData rawData = new RawData();
+                        rawData.setRawData(String.valueOf(mRawData));
+                        rawData.save(MainActivity.this, new SaveListener() {
+                            @Override
+                            public void onSuccess() {
+                                // TODO Auto-generated method stub
+
+//                                toast("添加数据成功，返回objectId为：" + p2.getObjectId());
+                            }
+
+                            @Override
+                            public void onFailure(int code, String msg) {
+                                // TODO Auto-generated method stub
+//                                toast("创建数据失败：" + msg);
+                            }
+                        });
+
+                        mRawData = null;
+                    }
+                    break;
+
                 case 135:
                     //处理注意力和冥想度的数据
-                    if (mRawData != null && mAttention != null && mMeditation != null) {
+                    if (mAttention != null && mMeditation != null) {
 //                        System.out.println("*" + mRawData + mAttention + " " + mMeditation);
                         //通过进度条的值反映注意力和冥想度
                         mAttentionProgressBar.setProgress(mAttention);
                         mMeditationProgressBar.setProgress(mMeditation);
 
+                        Data data = new Data();
+                        data.setAttention(String.valueOf(mAttention));
+                        data.setMeditation(String.valueOf(mMeditation));
+                        data.save(MainActivity.this, new SaveListener() {
+                            @Override
+                            public void onSuccess() {
+                                // TODO Auto-generated method stub
+                                if (setRecordTime) {
+                                    new Timer().schedule(new TimerTask() {
+                                        @Override
+                                        public void run() {
+                                            tgDevice.close();//到达指定时间关闭连接
+                                        }
+                                    }, sumSecond * 1000);
+                                    setRecordTime = false;
+                                }
+//                                toast("添加数据成功，返回objectId为：" + p2.getObjectId());
+                            }
+
+                            @Override
+                            public void onFailure(int code, String msg) {
+                                // TODO Auto-generated method stub
+//                                toast("创建数据失败：" + msg);
+                            }
+                        });
+
                         mMyDateBaseHelp.getReadableDatabase().execSQL(
-                                "insert into table1 values(null,?,?,?)",
-                                new Integer[]{mRawData, mAttention, mMeditation}
+                                "insert into table1 values(null,?,?)",
+                                new Integer[]{mAttention, mMeditation}
                         );
-                        mRawData = null;
+//                        mRawData = null;
                         mAttention = null;
                         mMeditation = null;
                     }
                     break;
-
+                //输出导出数据的目录
                 case 246:
                     new AlertDialog.Builder(MainActivity.this).setMessage("导出数据的目录是："
                             + msg.obj).setPositiveButton("确定",null).show();

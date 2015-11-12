@@ -23,4 +23,6 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.android.support:appcompat-v7:22.2.0'
     compile files('libs/opencsv-1.7.jar')
+    compile files('libs/BmobSDK_V3.4.4_0930.jar')
+    compile files('libs/open_sdk_r5509.jar')
 }

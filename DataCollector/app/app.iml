@@ -90,10 +90,16 @@
     </content>
     <orderEntry type="jdk" jdkName="Android API 22 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" exported="" name="open_sdk_r5509" level="project" />
+    <orderEntry type="library" exported="" name="BmobSDK_V3.4.4_0930" level="project" />
     <orderEntry type="library" exported="" name="ThinkGearBase" level="project" />
     <orderEntry type="library" exported="" name="support-annotations-22.2.0" level="project" />
+    <orderEntry type="library" exported="" name="Bmob_Push_V0.6beta_20150408" level="project" />
+    <orderEntry type="library" exported="" name="okhttp-2.4.0" level="project" />
     <orderEntry type="library" exported="" name="support-v4-22.2.0" level="project" />
+    <orderEntry type="library" exported="" name="okio-1.4.0" level="project" />
     <orderEntry type="library" exported="" name="ThinkGearPackX" level="project" />
+    <orderEntry type="library" exported="" name="mta-sdk-1.6.2" level="project" />
     <orderEntry type="library" exported="" name="appcompat-v7-22.2.0" level="project" />
     <orderEntry type="library" exported="" name="opencsv-1.7" level="project" />
   </component>

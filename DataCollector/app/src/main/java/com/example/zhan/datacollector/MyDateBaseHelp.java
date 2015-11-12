@@ -4,6 +4,9 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+/**
+ * Created by zhang on 10/10/2015.
+ */
 public class MyDateBaseHelp extends SQLiteOpenHelper {
 
     public MyDateBaseHelp(Context context, String name,
@@ -13,9 +16,9 @@ public class MyDateBaseHelp extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        System.out.println("RAW_DATA,ATTENTION,MEDITATION");
+//        System.out.println("ATTENTION,MEDITATION");
         db.execSQL("create table table1(_id integer primary key autoincrement," +
-                "RAW_DATA,ATTENTION,MEDITATION)");
+                "ATTENTION,MEDITATION)");
     }
 
     @Override

@@ -12,7 +12,6 @@ import au.com.bytecode.opencsv.CSVWriter;
 
 public class ExportData {
 
-
     private SQLiteDatabase mSQLiteDatabase;
     private File file;
 
@@ -41,7 +40,7 @@ public class ExportData {
             while (cursor.moveToNext()) {
                 //可以在这里增加数据库中数据的列数
                 String string[] = {cursor.getString(0), cursor.getString(1),
-                        cursor.getString(2),cursor.getString(3)};
+                        cursor.getString(2)};
                 csvWriter.writeNext(string);
             }
             csvWriter.close();
