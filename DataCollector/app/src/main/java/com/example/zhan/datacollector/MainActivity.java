@@ -23,6 +23,7 @@ import com.neurosky.thinkgear.TGDevice;
 import com.neurosky.thinkgear.TGEegPower;
 
 import java.io.Serializable;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,19 +34,26 @@ import java.util.TimerTask;
 
 public class MainActivity extends Activity {
 
+    //代表MindWave Mobile设备的类
     TGDevice tgDevice;
+    //输出算法的调试信息
     TextView tv;
     ScrollView sv;
+    //控制按钮
     Button mConnect, mExportData, mClearData, mShowData, mRecordTime;
+    //用来动态显示注意力和冥想度
     ProgressBar mAttentionProgressBar, mMeditationProgressBar;
 
 
     boolean buttonFlag = true;
 
+    //蓝牙适配器
     BluetoothAdapter bluetoothAdapter;
 
+    //数据库帮助类
     MyDateBaseHelp mMyDateBaseHelp = new MyDateBaseHelp(this, "database1.db3", null, 1);
 
+    //相关数据
     Integer mMeditation, mAttention, mRawData;
 
     int subjectContactQuality_cnt;
@@ -61,10 +69,13 @@ public class MainActivity extends Activity {
     int m_Count = 0;
     int Flag = 0;
 
+    //算法处理的数据
     double task_famil_baseline, task_famil_cur, task_famil_change;
     boolean task_famil_first;
     double task_diff_baseline, task_diff_cur, task_diff_change;
     boolean task_diff_first;
+
+    private MyHandler mMyHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,34 +83,35 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mMyHandler = new MyHandler(this);
+        
         tv = (TextView) findViewById(R.id.textView1);
         sv = (ScrollView) findViewById(R.id.scrollView1);
 
 
-        //参数的具体含义我不知道
+        //参数的具体含义我也不是很清楚
         subjectContactQuality_last = -1; /* start with impossible value */
         subjectContactQuality_cnt = 200; /* start over the limit, so it gets reported the 1st time */
 
-        // Check if Bluetooth is available on the Android device
+        // 检查蓝牙是否可得到
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (bluetoothAdapter == null) {
 
-            // Alert user that Bluetooth is not available
             Toast.makeText(this, "Bluetooth not available", Toast.LENGTH_LONG).show();
             //finish();
             return;
 
         } else {
-            // create the TGDevice
-            tgDevice = new TGDevice(bluetoothAdapter, handler);
+            tgDevice = new TGDevice(bluetoothAdapter, mMyHandler);
         }
 
-        //参数意思不知道
+        //算法处理的数据
         task_famil_baseline = task_famil_cur = task_famil_change = 0.0;
         task_famil_first = true;
         task_diff_baseline = task_diff_cur = task_diff_change = 0.0;
         task_diff_first = true;
 
+        //连接按钮
         mConnect = (Button) findViewById(R.id.connectButton);
         mConnect.setOnClickListener(new View.OnClickListener() {
 
@@ -118,6 +130,7 @@ public class MainActivity extends Activity {
             }
         });
 
+        //导出数据按钮
         mExportData = (Button) findViewById(R.id.exportData);
         mExportData.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -132,13 +145,14 @@ public class MainActivity extends Activity {
                         Message message = new Message();
                         message.what = 246;
                         message.obj = exportData.getFilePath();
-                        handler.sendMessage(message);
+                        mMyHandler.sendMessage(message);
 
                     }
                 }).start();
             }
         });
 
+        //清空数据按钮
         mClearData = (Button) findViewById(R.id.clearData);
         mClearData.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -156,6 +170,7 @@ public class MainActivity extends Activity {
             }
         });
 
+        //显示数据库中的数据
         mShowData = (Button) findViewById(R.id.showData);
         mShowData.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -179,6 +194,7 @@ public class MainActivity extends Activity {
             }
         });
 
+        //记录时间的设置
         mRecordTime = (Button) findViewById(R.id.setRecordTime);
         mRecordTime.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -239,7 +255,7 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 // 发送将数据插入数据库的消息
-                handler.sendEmptyMessage(135);
+                mMyHandler.sendEmptyMessage(135);
             }
         }, 0, 1000);
 
@@ -247,9 +263,16 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Handles messages from TGDevice
+     * 处理从TGDevice获取的数据
      */
-    final Handler handler = new Handler() {
+    public class MyHandler extends Handler {
+
+        WeakReference<MainActivity> mMainActivityWeakReference;
+
+        public MyHandler(MainActivity mainActivity) {
+            mMainActivityWeakReference = new WeakReference<>(mainActivity);
+        }
+
         @Override
         public void handleMessage(Message msg) {
 
@@ -520,10 +543,10 @@ public class MainActivity extends Activity {
 
             sv.fullScroll(View.FOCUS_DOWN);
 
-        } /* end handleMessage() */
-
-    }; /* end Handler */
-
+        }
+        
+    }
+    
     private double calcPercentChange(double baseline, double current) {
         double change;
 
